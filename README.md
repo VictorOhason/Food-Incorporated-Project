@@ -7,7 +7,7 @@ A full-stack web and desktop application for managing restaurant orders, menus, 
 ```
 Food-Incorporated-Project/
 ├── Food incorporated/
-│   ├── config.js                 # Domain configuration (NEW)
+│   ├── config.js                 # Auto-detects server domain/IP
 │   ├── Admin_Login/              # Admin login interface
 │   │   ├── index.html
 │   │   ├── script.js
@@ -25,12 +25,10 @@ Food-Incorporated-Project/
 │   │   ├── api.py                # Python API client
 │   │   ├── models.py             # Database models
 │   │   ├── requirements.txt      # Python dependencies
-│   │   ├── .env                  # Configuration (UPDATE FOR YOUR DOMAIN)
+│   │   ├── .env                  # Configuration
 │   │   └── widgets/              # Tkinter UI components
 │   └── README.txt
-├── DOMAIN_CONFIGURATION.md       # Domain setup guide (NEW)
-├── CHANGES_SUMMARY.md            # Detailed change log (NEW)
-└── README.md                     # This file
+└── README.md
 ```
 
 ## Features
@@ -58,38 +56,20 @@ Food-Incorporated-Project/
 - **Stock Management**: Update inventory levels
 - **Auto-refresh**: Real-time data synchronization
 
-## Domain Configuration
+## Automatic Domain Detection
 
-**This project has been updated for domain-based deployment!**
+The frontend automatically detects your server's domain or IP address. No hardcoded IPs needed.
 
-### Quick Setup
+How it works:
+- config.js detects hostname from window.location
+- Automatically constructs API URLs for any domain/IP
+- Works on localhost, school servers, or any deployment
+- Frontend calls backend at http://[current-server]:5000
 
-1. **Update `.env` with your domain:**
-   ```bash
-   cd "Food incorporated/Kitchen_app"
-   # Edit .env file:
-   # API_HOST=your-domain.com
-   # API_PROTOCOL=https
-   # ALLOWED_ORIGINS=https://your-domain.com
-   ```
-
-2. **Frontend automatically adapts** - No hardcoded IPs needed!
-   - JavaScript automatically detects your domain
-   - API URLs constructed dynamically in `config.js`
-
-3. **See [DOMAIN_CONFIGURATION.md](./DOMAIN_CONFIGURATION.md) for detailed setup**
-
-### No More Hardcoded IPs!
-
-Before: `http://51.132.179.154:5000` ❌  
-After: Auto-configured for your domain ✅
-
-**Key improvements:**
-- ✅ Dynamic domain detection
-- ✅ Environment-based configuration
-- ✅ Production-ready security headers
-- ✅ CORS properly configured
-- ✅ Error handling with logging
+Configuration:
+- Edit Kitchen_app/.env to customize API settings
+- ALLOWED_ORIGINS controls which servers can access the API
+- Default works for all origins (good for school networks)
 
 ## Installation
 
@@ -130,38 +110,45 @@ python Kitchen_app/app.py
 ```bash
 cd "Food incorporated"
 
-# Option 1: Python built-in server (development)
+# Start Python file server (development)
 python -m http.server 8000
-
-# Option 2: Use with Nginx (production)
-# See DOMAIN_CONFIGURATION.md for Nginx setup
 ```
 
 Then open:
-- Customer menu: `http://localhost:8000/Menu/menu.html`
-- Admin login: `http://localhost:8000/Admin_Login/index.html`
+- Customer menu: http://localhost:8000/Menu/menu.html
+- Admin login: http://localhost:8000/Admin_Login/index.html
+
+From another computer:
+- Replace localhost with your server IP address
 
 ## Environment Variables
 
-Create `.env` in `Kitchen_app/` directory:
+Configuration is in Kitchen_app/.env:
 
 ```env
-# Domain Configuration
-API_PROTOCOL=https              # http for dev, https for prod
-API_HOST=your-domain.com        # Your actual domain
-API_PORT=443                    # 443 for https, 5000 for dev
-
-# CORS
-ALLOWED_ORIGINS=https://your-domain.com,http://localhost:8000
-
 # Database
 DATABASE_URL=sqlite:///foodinc.db
-# PostgreSQL: postgresql://user:password@host/dbname
 
-# Security
+# API Server Configuration
+API_PROTOCOL=https
+API_HOST=s2330027.ncgrp.xyz
+API_PORT=443
+
+# CORS - allowed origins
+ALLOWED_ORIGINS=https://s2330027.ncgrp.xyz,http://localhost:8000
+
+# Server
 FLASK_ENV=production
 DEBUG=False
-SECURE_HSTS_SECONDS=31536000
+PORT=5000
+```
+
+For development on localhost, adjust:
+```env
+API_PROTOCOL=http
+API_HOST=localhost
+API_PORT=5000
+ALLOWED_ORIGINS=http://localhost:8000
 ```
 
 ## API Endpoints
@@ -196,24 +183,27 @@ ALLOWED_ORIGINS=https://your-domain.com,https://www.your-domain.com,http://local
 
 ## Deployment
 
-### Development
+### Development (Local)
 ```bash
-# Terminal 1: Backend
+# Terminal 1: Backend API
 cd "Food incorporated/Kitchen_app"
 python server.py
 
-# Terminal 2: Frontend
+# Terminal 2: Frontend server
 cd "Food incorporated"
 python -m http.server 8000
 ```
 
-### Production
-See [DOMAIN_CONFIGURATION.md](./DOMAIN_CONFIGURATION.md) for:
-- Nginx configuration
-- SSL/HTTPS setup
-- Gunicorn deployment
-- Database migration
-- Security hardening
+Access at: http://localhost:8000/Menu/menu.html
+
+### Production (School Server)
+1. Copy "Food incorporated" folder to server
+2. Install: pip install -r Kitchen_app/requirements.txt
+3. Update .env with your server details
+4. Run: python Kitchen_app/server.py
+5. Serve frontend files on port 8000
+
+Frontend auto-detects your server IP/domain
 
 ## Technology Stack
 
@@ -255,37 +245,20 @@ python -c "from server import init_db; init_db()"
 ## Troubleshooting
 
 ### API requests failing?
-1. Check `CONFIG.API_URL` in browser console
-2. Verify `.env` settings match your domain
-3. Restart Flask server
-4. See [DOMAIN_CONFIGURATION.md - Troubleshooting](./DOMAIN_CONFIGURATION.md#troubleshooting)
+1. Check `CONFIG.API_URL` in browser console (F12)
+2. Verify .env settings match your server
+3. Make sure Flask server is running on port 5000
+4. Check port 5000 is not blocked by firewall
 
 ### CORS errors?
-1. Add domain to `ALLOWED_ORIGINS` in `.env`
-2. Use `http://` for development, `https://` for production
-3. Restart Flask server
+1. Add domain/IP to ALLOWED_ORIGINS in .env
+2. Restart Flask server after changing .env
+3. Check protocol (http vs https) matches
 
 ### Database errors?
-1. Ensure `foodinc.db` file exists or run `init_db()`
-2. Check database URL in `.env`
-3. For PostgreSQL, verify connection details
-
-## Recent Changes
-
-✅ **May 2026**: Domain configuration system implemented
-- Removed hardcoded IP addresses
-- Dynamic API URL detection
-- Environment-based configuration
-- Added security headers
-- See [CHANGES_SUMMARY.md](./CHANGES_SUMMARY.md) for details
-
-## Project Status
-
-- ✅ Core functionality working
-- ✅ Domain configuration ready
-- ✅ Security headers implemented
-- ✅ CORS properly configured
-- 🔄 Ready for production deployment
+1. Delete foodinc.db to reset
+2. Restart Flask server to recreate database
+3. Check write permissions in Kitchen_app/ folder
 
 ## Authors
 
