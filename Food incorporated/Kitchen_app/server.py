@@ -23,6 +23,8 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # 3. cors setup
 ALLOWED_ORIGINS = os.getenv('ALLOWED_ORIGINS', '*').split(',')
+# Strip whitespace from origins
+ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS]
 CORS(app, resources={
     r"/*": {
         "origins": ALLOWED_ORIGINS,
@@ -32,6 +34,28 @@ CORS(app, resources={
         "max_age": 3600
     }
 })
+
+# 3.5. Security headers
+@app.after_request
+def set_security_headers(response):
+    """Add security headers to all responses."""
+    # Prevent clickjacking attacks
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    # Prevent MIME type sniffing
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    # Enable XSS protection
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    # Referrer policy
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    # Feature policy / Permissions policy (restrict what APIs can be used)
+    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+    
+    # HSTS (HTTP Strict Transport Security) - only in production
+    if not app.debug:
+        hsts_seconds = os.getenv('SECURE_HSTS_SECONDS', '31536000')
+        response.headers['Strict-Transport-Security'] = f'max-age={hsts_seconds}; includeSubDomains'
+    
+    return response
 
 # connect SQLAlchemy to Flask
 db.init_app(app)

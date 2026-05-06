@@ -3,8 +3,31 @@
 // ================================
 let ASSIGNED_TABLE = null;  // Will be assigned from server
 let ASSIGNED_STORE = "store1";  // Default store
-const LIVE_SERVER_URL = "http://127.0.0.1:5000/orders";
-const TABLE_API_URL = "http://127.0.0.1:5000/tables";
+
+// API URLs - derived from config.js (loaded via HTML)
+// Fallback to config object if available, otherwise construct from window location
+const getApiUrl = () => {
+    if (typeof CONFIG !== 'undefined') {
+        return CONFIG.ORDERS_URL;
+    }
+    // Fallback: construct from current domain
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    return `${protocol}//${hostname}/orders`;
+};
+
+const getTablesApiUrl = () => {
+    if (typeof CONFIG !== 'undefined') {
+        return CONFIG.TABLES_URL;
+    }
+    // Fallback
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    return `${protocol}//${hostname}/tables`;
+};
+
+const LIVE_SERVER_URL = getApiUrl();
+const TABLE_API_URL = getTablesApiUrl();
 
 const images = [
     { src: "../Images/food1.jpg", alt: "Freshly battered cod with golden chunky chips" },
