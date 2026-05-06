@@ -37,17 +37,7 @@ cd Kitchen_app
 pip install -r requirements.txt
 ```
 
-### 2. Configure (Optional)
-Default configuration works out-of-box with SQLite. To customize:
-```bash
-# Edit .env
-DATABASE_URL=sqlite:///foodinc.db  # Default
-ALLOWED_ORIGINS=*                   # Accept all origins
-PORT=5000
-DEBUG=True
-```
-
-### 3. Run the Server
+### 2. Run the Server
 ```bash
 python server.py
 ```
@@ -56,15 +46,42 @@ Expected output:
 ```
 Initializing database with default data
 Database initialized successfully
-* Running on http://0.0.0.0:5000
+Running on http://0.0.0.0:5000
 ```
 
-### 4. Verify Health
+### 3. Verify Server is Running
 ```bash
 curl http://localhost:5000/health
 ```
 
+Returns: {"status": "healthy"}
+
 ---
+
+## Environment Configuration
+
+Default .env works for development. File: Kitchen_app/.env
+
+Current settings:
+```env
+DATABASE_URL=sqlite:///foodinc.db
+API_PROTOCOL=https
+API_HOST=s2330027.ncgrp.xyz
+API_PORT=443
+ALLOWED_ORIGINS=https://s2330027.ncgrp.xyz,http://localhost:8000,http://localhost:3000
+FLASK_ENV=production
+DEBUG=False
+PORT=5000
+```
+
+For local development, use:
+```env
+API_PROTOCOL=http
+API_HOST=localhost
+API_PORT=5000
+ALLOWED_ORIGINS=http://localhost:8000
+DEBUG=True
+```
 
 ## API Endpoints
 
@@ -97,24 +114,27 @@ PATCH /tables/<store_id>/<table_id>/free
 
 ---
 
-## Database Setup
+## Database
 
-### For Development (SQLite - Default)
-No setup needed! Just run `python server.py`
+### Default (SQLite)
+No setup required. Database file (foodinc.db) created automatically on first run with sample data.
 
-### For Production (PostgreSQL)
-See [DATABASE_SETUP.md](DATABASE_SETUP.md) for detailed instructions.
+To reset:
+```bash
+rm foodinc.db
+python server.py
+```
 
-Examples:
+### Optional: PostgreSQL/MySQL
+Edit DATABASE_URL in .env and install driver:
 ```bash
 # PostgreSQL
-DATABASE_URL=postgresql://user:password@localhost:5432/foodinc
+pip install psycopg2-binary
+# .env: DATABASE_URL=postgresql://user:password@localhost/foodinc
 
 # MySQL
-DATABASE_URL=mysql+pymysql://user:password@localhost:3306/foodinc
-
-# Heroku PostgreSQL
-DATABASE_URL=<auto-set by Heroku>
+pip install pymysql
+# .env: DATABASE_URL=mysql+pymysql://user:password@localhost/foodinc
 ```
 
 ---

@@ -1,10 +1,12 @@
 Food Incorporated - Project Overview
 
-This document explains the purpose of each major file in the workspace, how the application works, and the common issues to watch for.
+This document explains the purpose of each major file in the workspace and how the application works.
 
 ---
 
 1) Project Structure
+
+config.js          - auto-detects server domain/IP for frontend API calls; dynamically constructs API URLs.
 
 Admin_Login/
   index.html       - login page for customers/staff.
@@ -14,90 +16,104 @@ Admin_Login/
 Images/
   (image files)    - asset folder containing food images used by the menu carousel.
 
-Kitchen_app/
-  server.py        - main Flask backend application.
-  models.py        - SQLAlchemy database model definitions for stores, tables, stock, and orders.
-  Procfile         - optional deployment config for services like Heroku.
-  qt6-old-app.txt  - legacy PyQt UI draft file; not part of current web app runtime.
-  requirements.txt - Python dependency list for backend runtime.
-  app.py           - likely another backend or app entrypoint; not part of the main current flow.
-  api.py           - additional backend API helper or stub file; not part of the primary current flow.
-  widgets/         - custom UI widgets for old Qt application.
-
 Menu/
-  menu.html        - customer menu page used to select items and place orders.
-  menu.js          - frontend menu behavior, table assignment, carousel, item quantity, order summary, and order submission logic.
+  menu.html        - customer menu page used to select items and place orders; loads config.js first.
+  menu.js          - frontend menu behavior: table assignment, carousel, item quantity, order summary, order submission.
   menu.css         - styling for menu page.
-  checkout.html    - order review/checkout page for finalizing orders.
-  checkout.js      - frontend checkout behavior for order submission and handling.
+  checkout.html    - order review/checkout page for finalizing orders; loads config.js first.
+  checkout.js      - frontend checkout behavior for order submission.
 
-favicon.ico        - browser favicon used by HTML pages.
-create_favicon.py  - script to generate or manage the favicon file.
-"Tutorial for FoodInc.mp4" - video file, likely a project walkthrough or demo.
+Kitchen_app/
+  server.py        - Flask REST API backend; handles orders, stock, tables, table assignment.
+  models.py        - SQLAlchemy database models: stores, tables, stock, orders.
+  api.py           - Python API client for desktop/kitchen app to connect to Flask backend.
+  app.py           - Desktop application (Tkinter) for kitchen staff.
+  requirements.txt - Python dependency list for backend runtime.
+  .env             - configuration file: database, API settings, CORS, security.
+  widgets/         - Tkinter UI components for desktop app.
+
+create_favicon.py  - script to generate the favicon file.
 
 ---
 
-2) Backend: Kitchen_app/server.py
+2) How It Works
 
-Purpose: Provides a REST API, database initialization, and table lifecycle management.
+Frontend (Menu & Checkout):
+  1. User opens menu.html or checkout.html
+  2. Browser loads config.js which auto-detects the server IP/domain
+  3. JavaScript uses CONFIG object with dynamically-constructed API URLs
+  4. API calls are sent to http://[server-ip]:5000 or https://[domain]:443
+  5. config.js handles localhost, IP addresses, and domain names automatically
 
-Key sections and functions:
+Backend (Flask server.py):
+  1. Reads configuration from .env file (API settings, database, CORS, security)
+  2. Initializes SQLite database (foodinc.db) with sample data on first run
+  3. Listens on port 5000, accepts requests from allowed origins (CORS)
+  4. Provides REST API endpoints for orders, stock, and table management
+  5. Runs background cleanup every 60 seconds to free tables after 30 minutes
 
-- load_dotenv() and config setup
-  * Loads environment variables from a .env file if present.
-  * DATABASE_URL is used to configure SQLAlchemy.
-  * Supports SQLite by default and adjusts `postgres://` URLs to `postgresql://`.
-  * CORS is enabled for the allowed origins list.
+Python API Client (api.py):
+  1. Used by desktop app (app.py) and kitchen staff interface
+  2. Reads API settings from .env (protocol, host, port)
+  3. Connects to Flask backend using environment variables for flexibility
+  4. Allows kitchen staff to manage orders and inventory from desktop application
 
-- init_db()
-  * Creates database tables for stores, tables, stock_items, and orders.
-  * Seeds default stores, 10 tables per store, and stock inventory only when the database is initially empty.
-  * This function runs on startup to ensure a working database.
+---
 
-- /health
-  * Basic health check endpoint.
-  * Returns status and message so load balancers or monitoring can confirm the backend is running.
+3) Key Features
 
-- /stock
-  * GET `/stock`: returns current kitchen inventory.
-  * POST `/stock/update`: updates a stock item's quantity by ID.
-  * Validation ensures the requested stock item exists.
+- Dynamic URL Detection: No hardcoded IPs in code; config.js handles any domain/IP
+- Environment Configuration: .env file controls all settings (database, CORS, API)
+- Database: SQLite by default (automatic setup), PostgreSQL/MySQL optional
+- Security: CORS headers, X-Frame-Options, Content-Type protection, HSTS
+- Automatic Database Initialization: Tables created automatically on first run
+- Multi-Store Support: Each store has 10 tables with automatic state management
 
-- /orders
-  * GET `/orders`: returns all saved order records.
-  * POST `/orders`: creates a new order.
-    - Requires `orderNumber` and `tableNumber`.
-    - Stores order fields, items, and total.
-    - Decrements matching stock items for each order item using a simple fuzzy name match.
-    - Commits the order and inventory updates together.
+---
 
-- /orders/<order_id>/status
-  * PATCH updates the status of an existing order.
-  * Looks up the order by `order_number`.
+4) Backend API Endpoints
 
-- /tables
-  * GET `/tables`: returns table state for every store.
-  * GET `/tables/<store_id>`: returns tables for one store only.
-  * POST `/tables/assign`: reserves the next free table in a store.
-    - Requests should include `storeId` and optionally `customerEmail`.
-    - Marks the found table `occupied`, saves the assigned email, and sets `occupied_since`.
-    - Returns 409 when no free tables are available.
-  * PATCH `/tables/<store_id>/<table_id>/free`: marks a table free again.
-    - Clears `assigned_to` and `occupied_since`.
+GET /health                       - health check
+GET /orders                       - all orders
+POST /orders                      - create new order
+PATCH /orders/<order_id>/status   - update order status
+GET /stock                        - kitchen inventory
+POST /stock/update                - update stock quantity
+GET /tables                       - all tables, all stores
+GET /tables/<store_id>            - tables for one store
+POST /tables/assign               - reserve next free table
+PATCH /tables/<store_id>/<table_id>/free - free a table
 
-- Background cleanup worker
-  * `check_occupied_tables()` runs every 60 seconds.
-  * It frees tables that have been occupied longer than 30 minutes.
-  * This thread is started automatically when the app launches.
+---
 
-- Application startup
-  * `init_db()` is called when the module is executed directly.
-  * The Flask app listens on `0.0.0.0` and uses `PORT` and `DEBUG` from environment variables.
+5) Configuration
 
-Common backend issues:
-  * `DATABASE_URL` misconfiguration.
-  * Wrong host/port if frontend uses `http://127.0.0.1:5000` but backend is running elsewhere.
-  * CORS settings blocking the frontend if `ALLOWED_ORIGINS` is not set correctly.
+Environment Variables (.env):
+  DATABASE_URL      - database connection (default: sqlite:///foodinc.db)
+  API_PROTOCOL      - http or https (default: https for production)
+  API_HOST          - server domain/IP (default: s2330027.ncgrp.xyz)
+  API_PORT          - API port (default: 443 for https, 5000 for dev)
+  ALLOWED_ORIGINS   - CORS allowed domains (default: current domain + localhost:8000)
+  FLASK_ENV         - production or development
+  DEBUG             - True/False for Flask debug mode
+  PORT              - frontend server port (default: 5000 for API)
+
+---
+
+6) Deployment
+
+Development:
+  Terminal 1: cd "Food incorporated/Kitchen_app" && python server.py
+  Terminal 2: cd "Food incorporated" && python -m http.server 8000
+  Access: http://localhost:8000/Menu/menu.html
+
+Production (School Server):
+  1. Copy "Food incorporated" folder to server
+  2. pip install -r Kitchen_app/requirements.txt
+  3. Update .env with domain and CORS settings
+  4. python Kitchen_app/server.py
+  5. Serve frontend files on port 8000
+  6. Access via browser: http://[server-ip]:8000/Menu/menu.html
   * Database not seeded because `init_db()` was not run or the database file is not writable.
   * Order stock decrement logic may not match names exactly, creating inconsistent inventory updates.
   * Duplicate `orderNumber` values can fail if an order with the same number already exists.
